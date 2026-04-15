@@ -155,6 +155,7 @@ class Microphone(AudioSource):
 
                 # compute RMS of debiased audio
                 energy = -audioop.rms(buffer, 2)
+                self.current_energy = energy
                 energy_bytes = bytes([energy & 0xFF, (energy >> 8) & 0xFF])
                 debiased_energy = audioop.rms(audioop.add(buffer, energy_bytes * (len(buffer) // 2), 2), 2)
 
@@ -323,6 +324,7 @@ class Recognizer(AudioSource):
         Creates a new ``Recognizer`` instance, which represents a collection of speech recognition functionality.
         """
         self.energy_threshold = 300  # minimum audio energy to consider for recording
+        self.current_energy = 300
         self.dynamic_energy_threshold = True
         self.dynamic_energy_adjustment_damping = 0.15
         self.dynamic_energy_ratio = 1.5
@@ -386,7 +388,8 @@ class Recognizer(AudioSource):
             if elapsed_time > duration: break
             buffer = source.stream.read(source.CHUNK)  # type: ignore[attr-defined]
             energy = audioop.rms(buffer, source.SAMPLE_WIDTH)  # type: ignore[attr-defined]  # energy of the audio signal
-
+            self.current_energy = energy
+            
             # dynamically adjust the energy threshold using asymmetric weighted average
             damping = self.dynamic_energy_adjustment_damping ** seconds_per_buffer  # account for different chunk sizes and rates
             target_energy = energy * self.dynamic_energy_ratio
@@ -499,6 +502,7 @@ class Recognizer(AudioSource):
 
                     # detect whether speaking has started on audio input
                     energy = audioop.rms(buffer, source.SAMPLE_WIDTH)  # energy of the audio signal
+                    self.current_energy = energy
                     if energy > self.energy_threshold: break
 
                     # dynamically adjust the energy threshold using asymmetric weighted average
@@ -536,6 +540,7 @@ class Recognizer(AudioSource):
 
                 # check if speaking has stopped for longer than the pause threshold on the audio input
                 energy = audioop.rms(buffer, source.SAMPLE_WIDTH)  # unit energy of the audio signal within the buffer
+                self.current_energy = energy
                 if energy > self.energy_threshold:
                     pause_count = 0
                 else:
