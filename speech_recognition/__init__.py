@@ -155,7 +155,6 @@ class Microphone(AudioSource):
 
                 # compute RMS of debiased audio
                 energy = -audioop.rms(buffer, 2)
-                self.current_energy = energy
                 energy_bytes = bytes([energy & 0xFF, (energy >> 8) & 0xFF])
                 debiased_energy = audioop.rms(audioop.add(buffer, energy_bytes * (len(buffer) // 2), 2), 2)
 
